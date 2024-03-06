@@ -14,8 +14,8 @@ interface BasicRequest {
 export async function POST(req: Request) {
 
     const mongoInstance = await MongoInstance.fromEnv()
-    const embeddingsProvider = OpenAIEmbeddingsProvider.fromEnv("text-embedding-ada-002")
-    const llmClient = OpenAILLM.fromEnv('gpt-3.5-turbo')
+    const embeddingsProvider = OpenAIEmbeddingsProvider.fromEnv("text-embedding-3-small")
+    const llmClient = OpenAILLM.fromEnv('gpt-4-turbo-preview')
 
     const publications = new MongoVectorCollection<PrewaveRagSource>(
         "publications",

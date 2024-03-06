@@ -33,7 +33,7 @@ export class MongoRAGClient<A extends RAGSource> {
         protected collection: MongoVectorCollection<A>,
         protected llm: OpenAILLM,
         protected makeDocumentContext: (document: A) => string,
-        protected contextDocumentsLimit: number = 3 //todo change to auto context size limiting
+        protected contextDocumentsLimit: number = 8 //todo change to auto context size limiting
     ) {
     }
 
@@ -56,6 +56,9 @@ export class MongoRAGClient<A extends RAGSource> {
     }
 
     private makePrompt(input: string, contexts: A[]): string {
+
+        console.log("context")
+        console.log(contexts)
         const contextString = contexts
             .map((document) => `${this.contextIdKey}: ${document.id} -> ${this.contextKey}: ${this.makeDocumentContext(document)}`)
             .join(' || ')

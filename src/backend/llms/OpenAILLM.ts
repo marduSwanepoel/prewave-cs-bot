@@ -16,7 +16,7 @@ export class OpenAILLM {
         this.openAIClient = new OpenAI({apiKey: APIKey})
     }
 
-    static fromEnv(model?: 'gpt-4' | 'gpt-3.5-turbo'): OpenAILLM {
+    static fromEnv(model?: 'gpt-4' | 'gpt-3.5-turbo' | 'gpt-4-turbo-preview'): OpenAILLM {
         const {OPENAI_API_KEY} = process.env
         if (!OPENAI_API_KEY) {
             throw new Error('OPENAI_API_KEY environment variable not found')
