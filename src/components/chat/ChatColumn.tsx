@@ -24,9 +24,9 @@ export const ChatColumn = ({messages, noContentMessage}: IChatColumn) => {
             direction="column"
             style={{backgroundColor: "#F8FBFC", overflowY: 'auto'}}
         >
-            {messages && messages.length > 0 ? messages.map((message) => {
+            {messages && messages.length > 0 ? messages.map((message, index) => {
                 return (
-                    <ResponseMessage message={message}/>
+                    <ResponseMessage key={index} message={message}/>
                 )
             }) : (<Typography variant="body1">Chat is empty</Typography>)}
         </Stack>

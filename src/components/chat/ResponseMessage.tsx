@@ -27,6 +27,7 @@ export const ResponseMessage = ({message}: IResponseMessage) => {
                 return (
                     <Paper
                         id={reference.id}
+                        key={reference.id}
                         elevation={1}
                         style={{padding: 10, width: 500, backgroundColor: "#ffffff"}}
                     >
