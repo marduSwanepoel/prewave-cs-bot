@@ -17,9 +17,10 @@
     "@mui/material": "^5.15.12",
     "@octokit/rest": "^20.0.2",
     "@xenova/transformers": "^2.13.4",
-    "axios": "^1.6.5",
+    "axios": "^1.6.7",
     "axios-logger": "^2.7.1",
     "bitbucket": "^2.11.0",
+    "fs": "^0.0.1-security",
     "mongodb": "^6.3.0",
     "next": "14.1.2",
     "openai": "^4.24.1",
@@ -27,6 +28,8 @@
     "react": "^18",
     "react-dom": "^18",
     "react-markdown": "^9.0.1",
+    "sharp": "^0.33.2",
+    "ts-node": "^10.9.2",
     "uuid": "^9.0.1"
   },
   "devDependencies": {

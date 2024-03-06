@@ -1,6 +1,7 @@
 import OpenAI from 'openai'
 import logger from 'pino'
 import {ChatCompletionMessageParam} from "openai/resources/chat/completions";
+import {ImageHandler} from "@/backend/images/image-handler";
 
 
 //todo abstract with interface
@@ -58,7 +59,46 @@ export class OpenAILLM {
         }
     }
 
-    async imageToText(imageUrl: string): Promise<string> {
+    // async imageToText(imageUrl: string): Promise<string> {
+    //     const result = await this.openAIClient.chat.completions.create({
+    //         model: "gpt-4-vision-preview",
+    //         messages: [
+    //             {
+    //                 role: "user",
+    //                 content: [
+    //                     { type: "text", text: "Given the following screenshot of a web interface, generate a description of what is going on. Explain in maximum 2 sentences." },
+    //                     {
+    //                         type: "image_url",
+    //                         image_url: {
+    //                             "url": "https://i.natgeofe.com/n/548467d8-c5f1-4551-9f58-6817a8d2c45e/NationalGeographic_2572187_4x3.jpg",
+    //                         },
+    //                     },
+    //                 ],
+    //             },
+    //         ],
+    //     });
+    //
+    //
+    //     const response = result.choices[0]
+    //     if (response == null) {
+    //         return Promise.reject("No response from LLM")
+    //     } else {
+    //         // @ts-ignore
+    //         return Promise.resolve(response.message.content)
+    //     }
+    // }
+
+    async imageToTextB64WithResize(imageUrl: string): Promise<string> {
+        console.log("A")
+        const imageb64 = await ImageHandler.downloadImageAndResize(imageUrl)
+        console.log("B")
+
+        return await this.imageToTextB64(imageb64)
+    }
+
+    async imageToTextB64(image: string): Promise<string> {
+        console.log("C")
+
         const result = await this.openAIClient.chat.completions.create({
             model: "gpt-4-vision-preview",
             messages: [
@@ -69,7 +109,8 @@ export class OpenAILLM {
                         {
                             type: "image_url",
                             image_url: {
-                                "url": "https://slack-files.com/T2FK78T8T-F06NM3Y7S0Z-ad2e910d9a",
+                                "url": `data:image/jpeg;base64,${image}`,
+                                // "url": "https://slack-files.com/T2FK78T8T-F06NM3Y7S0Z-ad2e910d9a",
                             },
                         },
                     ],
