@@ -39,9 +39,15 @@ export class MongoRAGClient<A extends RAGSource> {
 
     async runInference(input: string, scopeId: string): Promise<RagResponse<A>> {
         const relevantDocs = await this.collection.semanticVectorSearch(input, scopeId)
+
+        console.log(`relevantDocs: ${relevantDocs}`)
+
         const relevantDocsLimited = relevantDocs.splice(0, this.contextDocumentsLimit)
 
         const prompt = this.makePrompt(input, relevantDocsLimited)
+        console.log(`prompt: ${prompt}`)
+
+
         const finalResponse = await this.llm.chatCompletionAsObject<ContextBasedResponse>(prompt)
         const usedDocuments = relevantDocsLimited.filter((document) => {
             const id = document.id

@@ -34,6 +34,7 @@ export class OpenAILLM {
         const completionResponse = await this.openAIClient.chat.completions.create({
             model: this.model,
             messages: messages,
+            response_format: {type: 'json_object'},
             ...(temperature && {temperature: temperature}),
             // ...(response_format && {response_format: {type: response_format}}) //todo not yet available in GPT-4
         })
@@ -50,6 +51,9 @@ export class OpenAILLM {
     async chatCompletionAsObject<A>(content: string, roleContext?: string, temperature?: number): Promise<A> {
 
         const response = await this.chatCompletion(content, roleContext, temperature, 'json_object')
+
+        console.log("RRR")
+        console.log(response)
         try {
             const responseBody = JSON.parse(response) as A
             return Promise.resolve(responseBody)
