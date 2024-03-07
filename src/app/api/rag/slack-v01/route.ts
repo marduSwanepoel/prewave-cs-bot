@@ -144,7 +144,7 @@ class HackathonClient {
         `
     }
 
-    submitMissedAlert(question: string): Promise<RagResponse<PrewaveRagSource>> {
+    async submitMissedAlert(question: string): Promise<RagResponse<PrewaveRagSource>> {
         const prompt = `Help me to create a JSON object that I can use to submit a missed alert. In order to do so, you have to extract three things from the question:
         1. Target type: The target type referred to. This can only be a Organization, commodity or industry.
         2. The target name that is referred to. This must be present.
@@ -159,8 +159,22 @@ class HackathonClient {
         
         Here is th question: ${question}
         `
+        const llmResponse  = await this.llmClient.chatCompletionAsObject<ContextBasedResponse>(prompt, "You are an expert at extracting content into JSON")
 
-        return this.llmClient.chatCompletionAsObject<RagResponse<PrewaveRagSource>>(prompt, "You are an expert at extracting content into JSON")
+        const usedDocuments = llmResponse.contextIds.map((url) => {
+            return {
+                id: "string",
+                scopeId: "",
+                sourceName: "",
+                content: "string",
+                url
+            }  as PrewaveRagSource })
+
+        return {
+            input: question,
+            output: llmResponse.answer,
+            references: usedDocuments
+        } as RagResponse<PrewaveRagSource>
     }
 
     //NOTES specify "missed alert", or "attached screenshot" or "explain" in the prompt
