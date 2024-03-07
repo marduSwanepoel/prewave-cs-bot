@@ -100,8 +100,6 @@ export class MongoRAGClient<A extends RAGSource> {
 
     private makePrompt(input: string, contexts: A[], imageContext?: string): string {
 
-        console.log("context")
-        console.log(contexts)
         const contextString = contexts
             .map((document) => `${this.contextIdKey}: ${document.id} -> ${this.contextKey}: ${this.makeDocumentContext(document)}`)
             .join(' || ')

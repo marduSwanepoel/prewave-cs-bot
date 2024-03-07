@@ -34,7 +34,7 @@ export class OpenAILLM {
         const completionResponse = await this.openAIClient.chat.completions.create({
             model: this.model,
             messages: messages,
-            response_format: {type: 'json_object'},
+            response_format: {type: !!response_format ? response_format : 'json_object'},
             ...(temperature && {temperature: temperature}),
             // ...(response_format && {response_format: {type: response_format}}) //todo not yet available in GPT-4
         })
