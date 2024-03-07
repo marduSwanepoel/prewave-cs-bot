@@ -26,7 +26,7 @@ export async function POST(req: Request) {
         (document: PrewaveRagSource) => MarkdownSplitter.removeMarkdownCharacters(document.content)
     )
 
-    const ragClient = new MongoRAGClient<PrewaveRagSource>(
+    const ragClient = MongoRAGClient.fromEnv<PrewaveRagSource>(
         publications,
         llmClient,
         (document: PrewaveRagSource) => document.content)

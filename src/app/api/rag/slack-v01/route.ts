@@ -9,6 +9,7 @@ import {MarkdownSplitter} from "@/backend/common/MarkdownSplitter";
 
 interface BasicRequest {
     question: string
+    imageUrl?: string
 }
 
 export async function POST(req: Request) {
@@ -26,14 +27,20 @@ export async function POST(req: Request) {
         (document: PrewaveRagSource) => MarkdownSplitter.removeMarkdownCharacters(document.content)
     )
 
-    const ragClient = new MongoRAGClient<PrewaveRagSource>(
+    const ragClient = MongoRAGClient.fromEnv<PrewaveRagSource>(
         publications,
         llmClient,
         (document: PrewaveRagSource) => document.content)
 
     const request = await req.json() as BasicRequest
     console.log(`request.question: ${request.question}`)
-    const res = await ragClient.runInference(request.question, "request.scopeId")
+
+    const answerRequest = !!request.imageUrl ?
+        ragClient.runInferenceWithImage(request.question, "", request.imageUrl) :
+        ragClient.runInference(request.question, "")
+
+
+    const res = await answerRequest
 
     return NextResponse.json(res)
 }

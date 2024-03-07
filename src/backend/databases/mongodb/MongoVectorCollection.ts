@@ -75,8 +75,6 @@ export class MongoVectorCollection<A> extends MongoCollection<A> {
 
     async semanticVectorSearch(value: string, scopeId: string): Promise<A[]> {
         const aggregation = await this.createStringBasedAggregationStage(value, scopeId)
-        console.log(`aggregation: ${JSON.stringify(aggregation)}`)
-
         return this.aggregate(aggregation)
     }
 
