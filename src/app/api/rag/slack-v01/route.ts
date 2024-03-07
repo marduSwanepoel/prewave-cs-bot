@@ -59,6 +59,10 @@ class HackathonClient {
     constructor(public mongoInstance: MongoInstance) {
     }
 
+    // explain to me what is Lksg, and how Prewave can help me in that context
+    //
+
+
     async handleWithRoute(request: BasicRequest) {
         console.log(`REQUEST: ${JSON.stringify(request)}`)
         console.log(`request.imageUrl: ${request.imageUrl}`)
@@ -78,7 +82,7 @@ class HackathonClient {
                 console.log("processing EXPLAIN_ALERTS")
                 return this.explainAlert(request.question)
             default :
-                console.log("processing default")
+                console.log("processing DEFAULT")
                 return this.answerKnowledgeBaseQuestion(request.question)
         }
     }
@@ -145,22 +149,17 @@ class HackathonClient {
     //NOTES specify "missed alert", or "attached screenshot" or "explain" in the prompt
     routeQuestion(question: string): Promise<string> {
         const prompt =
-`You are an expert at mapping questions to relevant actions. I will give you a question:
-1. If the questions asks to specifically create a missed alert given a url and information about the alert. Key = MISSED_ALERT
-2. If the questions asks to explain terminology or a concept or get more details on some topic. Key = Q_AND_A
-3. If the question wants to get more details and information or an explanation about recent alerts present in the system. Key = EXPLAIN_ALERTS.
-For your answer, ONLY return the JSON output with the correct task, nothing else. Example, question = help me to create this missed alert for Hilti at url www.abc.com -> answer = {“questionType”: ”MISSED_ALERT”}
-JSON Format: {“questionType”: ”MISSED_ALERT”/“Q_AND_A”/“EXPLAIN_ALERTS"}
-Here is the question you should analyse: ${question}`
-        //     `You are an expert at mapping questions to relevant actions. I will give you a question, and you should :
-        // 1. If the questions asks to specifically create a missed alert given a url and information about the alert. Key = MISSED_ALERT
-        // 2. If the questions asks to explain terminology or a concept or get more details on some topic. Key = Q_AND_A
-        // 3. If the questions asks to help with a UI screenshot or attached, find content relevant to it, or do image analysis. Key = IMAGE_ANALYSIS
-        // 4. If the question wants to get more details and information or an explanation about recent alerts present in the system. Key = EXPLAIN_ALERTS.
-        //
-        // For your answer, ONLY return the correct task key, nothing else. Example, question = help me to create this missed alert for Hilti at url www.abc.com -> answer = MISSED_ALERT
-        //
-        // Here is the question you should analyse: ${question}`
+            `You are an expert at mapping questions to relevant actions. I will give you a question, the rules that map a question to an action, and you should analyse 
+            the question to find the best fitting action given for the question. Here are the actions with their respective task keys, and what questions should route to these actions:
+            Action 1: If the questions asks to specifically create a new missed alert given a url, return key MISSED_ALERT.
+            Action 2: If the questions asks to explain terminology or a concept or get more details on some topic, return key Q_AND_A.
+            Action 3: If the question wants to get more information or an explanation about alerts for them, return key EXPLAIN_ALERTS.
+            
+            For your answer, ONLY return the correct task key, nothing else. Example, question = help me to create this missed alert for Hilti at url www.abc.com -> answer = MISSED_ALERT
+            
+            Here is the question you should analyse: ${question}
+            
+            Answer:`
 
         return this.llmGpt3.chatCompletion(prompt, "you are good at deriving tasks from answers", 0.3, "text")
     }
