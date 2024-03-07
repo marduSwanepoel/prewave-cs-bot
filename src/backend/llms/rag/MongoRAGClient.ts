@@ -179,43 +179,5 @@ export class MongoRAGClient<A extends RAGSource> {
         return updatedPrompt
     }
 
-    // async runInferenceForAlertExplain(alertsText: string[]): Promise<RagResponse<A>> {
-    //
-    //
-    //     const prompt = this.makeAlertExplainPrompt(input, relevantDocsLimited)
-    //     const finalResponse = await this.llm.chatCompletionAsObject<ContextBasedResponse>(prompt)
-    //
-    //     const usedDocuments = relevantDocsLimited.filter((document) => {
-    //         const id = document.id
-    //         return finalResponse.contextIds.includes(id)
-    //     })
-    //
-    //     return {
-    //         input: input,
-    //         output: finalResponse.answer,
-    //         references: usedDocuments
-    //     } as RagResponse<A>
-    // }
-
-    // private makeAlertExplainPrompt(alertsText: string, question: string): string {
-    //
-    //     const contextString = contexts
-    //         .map((document) => `${this.contextIdKey}: ${document.id} -> ${this.contextKey}: ${this.makeDocumentContext(document)}`)
-    //         .join(' || ')
-    //
-    //     return (
-    //         `Help to answer the following question. I will give you extra context you must use to answer the question. The information you use to answer
-    //         the question can only be drawn from the provided context pieces, and not from your own trained memory. I provided context in the
-    //         format "${this.contextIdKey} -> ${this.contextKey} || ${this.contextIdKey} -> ${this.contextKey}".
-    //
-    //         Your response should contain your answer, together with an array of the IDs for the contexts you used to answer the question. It should be in the following
-    //         JSON format: { "answer": "your answer to question", "contextIds": ["id1", "id2"] }.
-    //         --------------------
-    //         Here is the context to use to answer the question: ${contextString}
-    //         --------------------
-    //         Here is the question you should answer: ${input}`)
-    // }
-
-
 }
 

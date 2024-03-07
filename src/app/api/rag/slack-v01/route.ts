@@ -30,10 +30,9 @@ export async function POST(req: Request) {
 }
 
 interface AlertInfo {
-    id: string
+    title: string
+    text: string
     url: string
-    content: string
-    dateCreated: string
 }
 
 class HackathonClient {
@@ -61,6 +60,10 @@ class HackathonClient {
     }
 
     async handleWithRoute(request: BasicRequest) {
+        if (!!request.imageUrl) {
+            console.log("processing IMAGE_ANALYSIS")
+            return this.explainImage(request.question, request.imageUrl)
+        }
         const action = await this.routeQuestion(request.question)
         switch (action) {
             case "MISSED_ALERT":
@@ -69,12 +72,9 @@ class HackathonClient {
             case "Q_AND_A":
                 console.log("processing Q_AND_A")
                 return this.answerKnowledgeBaseQuestion(request.question)
-            case "IMAGE_ANALYSIS":
-                console.log("processing IMAGE_ANALYSIS")
-                return !!request.imageUrl ? this.explainImage(request.question, request.imageUrl) : this.answerKnowledgeBaseQuestion(request.question)
             case "EXPLAIN_ALERTS":
                 console.log("processing EXPLAIN_ALERTS")
-                return this.answerKnowledgeBaseQuestion(request.question)
+                return this.explainAlert(request.question)
             default :
                 console.log("processing default")
                 return this.answerKnowledgeBaseQuestion(request.question)
@@ -89,17 +89,43 @@ class HackathonClient {
         return this.ragClient.runInferenceWithImage(question, "", imageUrl)
     }
 
-    // explainAlert(question: string, imageUrl: string): Promise<RagResponse<PrewaveRagSource>> {
-    //     const alerts = this.alertsCollection.findAll()
-    //     const
-    //     return this.ragClient.runInference(question, "", imageUrl)
-    // }
+    async explainAlert(question: string): Promise<RagResponse<PrewaveRagSource>> {
+        const alerts = await this.alertsCollection.findAll()
+        const prompt = this.makeAlertPrompt(question, alerts)
+        return this.llmClient.chatCompletionAsObject(prompt)
+    }
+
+    makeAlertPrompt(question: string, alerts: AlertInfo[]) {
+        const contextString = alerts
+            .map((alert) => `${alert.title} --> ${alert.url} --> ${alert.text} --> `)
+            .join(' || ')
+
+        return `
+        You are confident PrewaveBot who helps users to understand their Alerts, which is a Prewave concept refering to news articles that represent events relevant to a customer's 
+        supply chain. Use the customer's Alerts I will give to you to answer the questions that they have about their alerts.
+        If you don't know the answer, just say that you don't know, don't try to make up an answer. Be confident in your answers.
+        Your goal is to make users feel supported and understood, ensuring they can navigate the platform's features with confidence.
+        Aim for responses that are clear, concise, and personalized, using no more than four sentences.
+        
+        I provide the alerts in the format "ALERT_TITLE --> ALERT_URL --> ALERT_TEXT || ALERT_TITLE --> ALERT_URL --> ALERT_TEXT || ...".
+        Your response should contain your answer, together with an array of the alert Titles and URLs that are relevant to the question you answered
+        JSON format: { "answer": "your answer to question", "contextIds": ["alert_title, alert_url", "alert_title, alert_url", ...] }.
+            
+        Alerts for context:
+        """
+        ${contextString}
+        """
+        
+        Question about alerts: ${question}
+        Answer:"""
+        `
+    }
 
     submitMissedAlert(question: string): Promise<RagResponse<PrewaveRagSource>> {
         const prompt = `Help me to create a JSON object that I can use to submit a missed alert. In order to do so, you have to extract three things from the question:
         1. Target type: The target type referred to. This can only be a Organization, commodity or industry.
         2. The target name that is referred to. This must be present.
-        3. The event type that is mentioned to have occurred, this can only be partnership or theft.
+        3. The event type that is mentioned to have occurred, this can only be partnership, theft, strike or corruption.
         4. The URL that points to the website describing the alert details, this must be present.
         
         IF you are not able to extract all the above from the question it is a failure, and you should return this JSON object and replace YOUR_ANSWER with an explaination of why the alert could not be created, as in what was missing from the question:
@@ -116,16 +142,23 @@ class HackathonClient {
 
     //NOTES specify "missed alert", or "attached screenshot" or "explain" in the prompt
     routeQuestion(question: string): Promise<string> {
-        const prompt = `Given a question, help me to understand which task I should perform. I will give you the tasks, an overview of each task, and then the task key
-        you should return if the question matches the task to do. Here are the tasks:
-        1. If the questions asks to specifically create a missed alert given a url and information about the alert. Key = MISSED_ALERT
-        2. If the questions asks to explain terminology or a concept or get more details on some topic. Key = Q_AND_A
-        3. If the questions asks to help with a UI screenshot or attached, find content relevant to it, or do image analysis. Key = IMAGE_ANALYSIS
-        4. If the question wants to get more details and information or an explanation about recent alerts present in the system. Key = EXPLAIN_ALERTS.
-        
-        For your answer, ONLY return the correct task key, nothing else. Example, question = help me to create this missed alert for Hilti at url www.abc.com -> answer = MISSED_ALERT
-        
-        Here is the question you should analyse: ${question}`
+        const prompt =
+`You are an expert at mapping questions to relevant actions. I will give you a question:
+1. If the questions asks to specifically create a missed alert given a url and information about the alert. Key = MISSED_ALERT
+2. If the questions asks to explain terminology or a concept or get more details on some topic. Key = Q_AND_A
+3. If the question wants to get more details and information or an explanation about recent alerts present in the system. Key = EXPLAIN_ALERTS.
+For your answer, ONLY return the JSON output with the correct task, nothing else. Example, question = help me to create this missed alert for Hilti at url www.abc.com -> answer = {“questionType”: ”MISSED_ALERT”}
+JSON Format: {“questionType”: ”MISSED_ALERT”/“Q_AND_A”/“EXPLAIN_ALERTS"}
+Here is the question you should analyse: ${question}`
+        //     `You are an expert at mapping questions to relevant actions. I will give you a question, and you should :
+        // 1. If the questions asks to specifically create a missed alert given a url and information about the alert. Key = MISSED_ALERT
+        // 2. If the questions asks to explain terminology or a concept or get more details on some topic. Key = Q_AND_A
+        // 3. If the questions asks to help with a UI screenshot or attached, find content relevant to it, or do image analysis. Key = IMAGE_ANALYSIS
+        // 4. If the question wants to get more details and information or an explanation about recent alerts present in the system. Key = EXPLAIN_ALERTS.
+        //
+        // For your answer, ONLY return the correct task key, nothing else. Example, question = help me to create this missed alert for Hilti at url www.abc.com -> answer = MISSED_ALERT
+        //
+        // Here is the question you should analyse: ${question}`
 
         return this.llmGpt3.chatCompletion(prompt, "you are good at deriving tasks from answers", 0.3, "text")
     }
