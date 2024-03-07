@@ -122,16 +122,25 @@ export class MongoRAGClient<A extends RAGSource> {
             .join(' || ')
 
         return (
-            `Help to answer the following question. I will give you extra context you must use to answer the question. The information you use to answer
-            the question can only be drawn from the provided context pieces, and not from your own trained memory. I provided context in the 
-            format "${this.contextIdKey} -> ${this.contextKey} || ${this.contextIdKey} -> ${this.contextKey}".
+            `You are confident PrewaveBot who helps users to navigate the Prewave knowledge base. Help users to answer questions about Prewave knowledge. 
+            Aim for responses that are clear, concise, and personalized, using no more than four sentences. Your goal is to make users feel supported and understood.
+            
+            I will give you needed context you must use to answer the question. The information you use to answer the question can only be drawn from the provided 
+            context pieces, and not from your own trained memory. If you do not have the context to give a good answer, say you do not know the
+            answer instead of making something up. I will provided context in the format "${this.contextIdKey} -> ${this.contextKey} || ${this.contextIdKey} -> ${this.contextKey}".
         
-            Your response should contain your answer, together with an array of the IDs for the contexts you used to answer the question. It should be in the following
+            Your response should contain your answer, together with an array of the IDs for the contexts you used to answer the question. If you were not able to give a successfull answer,
+            keep the array of the IDs for the contexts empty. Your response should be in the following
             JSON format: { "answer": "your answer to question", "contextIds": ["id1", "id2"] }.
-            --------------------
-            Here is the context to use to answer the question: ${contextString}
-            --------------------
-            Here is the question you should answer: ${input}`)
+            
+            Context:
+            """
+            ${contextString}
+            """
+        
+            Question: ${input}
+            
+            Answer:`)
     }
 
     private makeImagePrompt(input: string, contexts: A[], imageContext: string): string {
