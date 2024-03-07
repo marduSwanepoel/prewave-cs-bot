@@ -4,7 +4,7 @@ import {OpenAIEmbeddingsProvider} from "@/backend/embeddings/OpenAIEmbeddingsPro
 import {OpenAILLM} from "@/backend/llms/OpenAILLM";
 import {MongoVectorCollection} from "@/backend/databases/mongodb/MongoVectorCollection";
 import {PrewaveRagSource} from "@/domain/prewave/PrewaveRagSource";
-import {MongoRAGClient} from "@/backend/llms/rag/MongoRAGClient";
+import {ContextBasedResponse, MongoRAGClient} from "@/backend/llms/rag/MongoRAGClient";
 import {MarkdownSplitter} from "@/backend/common/MarkdownSplitter";
 import {RagResponse} from "@/backend/llms/rag/RagResponse";
 import {MongoCollection} from "@/backend/databases/mongodb/MongoCollection";
@@ -60,7 +60,9 @@ class HackathonClient {
     }
 
     // explain to me what is Lksg, and how Prewave can help me in that context
-    //
+    // create a missed alert for Mitsibushi, who were involved in Theft. Here is the article: https://www.mining.com/web/frontier-lithium-mitsubishi-form-jv-for-canadian-lithium-operations/
+    // create a missed alert for Mitsibushi. Here is the article: https://www.mining.com/web/frontier-lithium-mitsubishi-form-jv-for-canadian-lithium-operations/
+    // create a missed alert for Texas USA, where Theft occurred. Here is the article: https://www.mining.com/web/frontier-lithium-mitsubishi-form-jv-for-canadian-lithium-operations/
 
 
     async handleWithRoute(request: BasicRequest) {
@@ -98,7 +100,22 @@ class HackathonClient {
     async explainAlert(question: string): Promise<RagResponse<PrewaveRagSource>> {
         const alerts = await this.alertsCollection.findAll()
         const prompt = this.makeAlertPrompt(question, alerts)
-        return this.llmClient.chatCompletionAsObject(prompt)
+        const llmResponse = await this.llmClient.chatCompletionAsObject<ContextBasedResponse>(prompt)
+
+        const usedDocuments = llmResponse.contextIds.map((url) => {
+            return {
+                id: "string",
+                scopeId: "",
+                sourceName: "",
+                content: "string",
+                url
+        }  as PrewaveRagSource })
+
+        return {
+            input: question,
+            output: llmResponse.answer,
+            references: usedDocuments
+        } as RagResponse<PrewaveRagSource>
     }
 
     makeAlertPrompt(question: string, alerts: AlertInfo[]) {

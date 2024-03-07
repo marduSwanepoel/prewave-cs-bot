@@ -3,7 +3,7 @@ import {MongoVectorCollection} from "@/backend/databases/mongodb/MongoVectorColl
 import {OpenAILLM} from "@/backend/llms/OpenAILLM";
 import {RagResponse} from "@/backend/llms/rag/RagResponse";
 
-interface ContextBasedResponse {
+export interface ContextBasedResponse {
     answer: string
     contextIds: string[]
 }
