@@ -27,7 +27,7 @@ export async function POST(req: Request) {
 }
 
 
-export class HackathonClient {
+class HackathonClient {
 
     embeddingsProvider = OpenAIEmbeddingsProvider.fromEnv("text-embedding-3-small")
     llmClient = OpenAILLM.fromEnv('gpt-4-turbo-preview')
