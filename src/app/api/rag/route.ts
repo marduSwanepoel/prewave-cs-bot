@@ -1,13 +1,45 @@
 import {NextResponse} from 'next/server';
+import {MongoInstance} from "@/backend/databases/mongodb/MongoInstance";
+import {OpenAIEmbeddingsProvider} from "@/backend/embeddings/OpenAIEmbeddingsProvider";
 import {OpenAILLM} from "@/backend/llms/OpenAILLM";
+import {MongoVectorCollection} from "@/backend/databases/mongodb/MongoVectorCollection";
+import {PrewaveRagSource} from "@/domain/prewave/PrewaveRagSource";
+import {MongoRAGClient} from "@/backend/llms/rag/MongoRAGClient";
+import {MarkdownSplitter} from "@/backend/common/MarkdownSplitter";
 
-export async function GET(req: Request) {
+interface BasicRequest {
+    question: string
+    imageUrl?: string
+}
 
-    const c = OpenAILLM.fromEnv()
-   const r = await c.imageToTextB64WithResize("https://i.natgeofe.com/n/548467d8-c5f1-4551-9f58-6817a8d2c45e/NationalGeographic_2572187_4x3.jpg").then(a => {
-        console.log("aaaaaa")
-        console.log(a)
-    })
+export async function POST(req: Request) {
 
-    return NextResponse.json({"message": "dd"})
+    const mongoInstance = await MongoInstance.fromEnv()
+    const embeddingsProvider = OpenAIEmbeddingsProvider.fromEnv("text-embedding-3-small")
+    const llmClient = OpenAILLM.fromEnv('gpt-4-turbo-preview')
+
+    const publications = new MongoVectorCollection<PrewaveRagSource>(
+        "publications",
+        mongoInstance,
+        embeddingsProvider,
+        "publications-vector-index",
+        "embedding_vector",
+        (document: PrewaveRagSource) => MarkdownSplitter.removeMarkdownCharacters(document.content)
+    )
+
+    const ragClient = MongoRAGClient.fromEnv<PrewaveRagSource>(
+        publications,
+        llmClient,
+        (document: PrewaveRagSource) => document.content)
+
+    const request = await req.json() as BasicRequest
+    console.log(`request.question: ${request.question}`)
+
+    const answerRequest = !!request.imageUrl ?
+        ragClient.runInferenceWithImage(request.question, "", request.imageUrl) :
+        ragClient.runInference(request.question, "")
+
+    const res = await answerRequest
+
+    return NextResponse.json(res)
 }
