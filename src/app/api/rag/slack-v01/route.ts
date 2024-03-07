@@ -60,6 +60,8 @@ class HackathonClient {
     }
 
     async handleWithRoute(request: BasicRequest) {
+        console.log(`REQUEST: ${JSON.stringify(request)}`)
+        console.log(`request.imageUrl: ${request.imageUrl}`)
         if (!!request.imageUrl) {
             console.log("processing IMAGE_ANALYSIS")
             return this.explainImage(request.question, request.imageUrl)
