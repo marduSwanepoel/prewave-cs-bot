@@ -14,6 +14,8 @@ interface BasicRequest {
     imageUrl?: string
 }
 
+export const maxDuration = 100;
+
 export async function POST(req: Request) {
 
     const mongoInstance = await MongoInstance.fromEnv()
