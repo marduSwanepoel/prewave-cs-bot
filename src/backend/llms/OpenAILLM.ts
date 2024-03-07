@@ -59,21 +59,19 @@ export class OpenAILLM {
         }
     }
 
-    async imageToTextB64WithResize(imageUrl: string): Promise<string> {
+    async imageToTextB64WithResize(imageUrl: string, imagePrompt: string): Promise<string> {
         const imageb64 = await ImageHandler.downloadImageAndResize(imageUrl)
-        return await this.imageToTextB64(imageb64)
+        return await this.imageToText(imageb64, imagePrompt)
     }
 
-    async imageToTextB64(image: string): Promise<string> {
-        console.log("C")
-
+    async imageToText(image: string, imagePrompt: string): Promise<string> {
         const result = await this.openAIClient.chat.completions.create({
             model: "gpt-4-vision-preview",
             messages: [
                 {
                     role: "user",
                     content: [
-                        { type: "text", text: "Given the following screenshot of a web interface, generate a description of what is going on. Explain in maximum 2 sentences." },
+                        { type: "text", text: imagePrompt },
                         {
                             type: "image_url",
                             image_url: {

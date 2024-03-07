@@ -72,21 +72,38 @@ export class MongoRAGClient<A extends RAGSource> {
         } as RagResponse<A>
     }
 
+    removeTextAfterImageDescription(input: string): string {
+        const index = input.indexOf("Image description: ");
+
+        if (index !== -1) {
+            return input.substring(0, index + "Image description: ".length);
+        } else {
+            return input;
+        }
+    }
+
     async runInferenceWithImage(input: string, scopeId: string, imageUrl: string): Promise<RagResponse<A>> {
 
-        const imageDescription = await this.llm.imageToTextB64WithResize(imageUrl)
+        const imageDescription = await this.llm.imageToTextB64WithResize(imageUrl, "Given the following screenshot of a web interface. Generate a very description that I can use in a documentation. Maximum 2 sentences.")
 
-        // find relevant docs
-        const searchTextWithImage = `${input}. Image description: ${imageDescription}`
-        const relevantDocs = await this.collection.semanticVectorSearch(searchTextWithImage, scopeId)
-        const relevantDocsLimited = relevantDocs.splice(0, this.contextChunksLimit)
+        // find relevant docs for image
+        const searchTextWithImage = `Image description: ${imageDescription}`
+        const imageDescriptionDocs = await this.collection.semanticVectorSearch(searchTextWithImage, scopeId)
+        const relevantImageDocsLimited = imageDescriptionDocs.splice(0, this.contextChunksLimit)
+        const imageDocsText = relevantImageDocsLimited.map((doc) => {
+            return this.removeTextAfterImageDescription(doc.content)
+        }).join('. ')
+
+        const contentAndImageText = `${input}. ${imageDocsText}`
+        const contentAndImageRelevantDocs = await this.collection.semanticVectorSearch(contentAndImageText, scopeId)
+        const contentAndImageRelevantDocsLimited = contentAndImageRelevantDocs.splice(0, this.contextChunksLimit)
 
         // prompt and get response
-        const prompt = this.makePrompt(input, relevantDocsLimited, imageDescription)
+        const prompt = this.makeImagePrompt(input, contentAndImageRelevantDocsLimited, imageDescription)
         const finalResponse = await this.llm.chatCompletionAsObject<ContextBasedResponse>(prompt)
 
         // find referenced docs
-        const usedDocuments = relevantDocsLimited.filter((document) => {
+        const usedDocuments = contentAndImageRelevantDocsLimited.filter((document) => {
             const id = document.id
             return finalResponse.contextIds.includes(id)
         })
@@ -98,13 +115,11 @@ export class MongoRAGClient<A extends RAGSource> {
         } as RagResponse<A>
     }
 
-    private makePrompt(input: string, contexts: A[], imageContext?: string): string {
+    private makePrompt(input: string, contexts: A[]): string {
 
         const contextString = contexts
             .map((document) => `${this.contextIdKey}: ${document.id} -> ${this.contextKey}: ${this.makeDocumentContext(document)}`)
             .join(' || ')
-
-        const imagePromptContext = !!imageContext ? `--------------------\n Here a description of the image attached to the question: ${imageContext}` : ""
 
         return (
             `Help to answer the following question. I will give you extra context you must use to answer the question. The information you use to answer
@@ -114,11 +129,92 @@ export class MongoRAGClient<A extends RAGSource> {
             Your response should contain your answer, together with an array of the IDs for the contexts you used to answer the question. It should be in the following
             JSON format: { "answer": "your answer to question", "contextIds": ["id1", "id2"] }.
             --------------------
-            Here context to use to answer the question: ${contextString}
-            ${imagePromptContext}
+            Here is the context to use to answer the question: ${contextString}
             --------------------
-            Here is the question: ${input}`)
+            Here is the question you should answer: ${input}`)
     }
+
+    private makeImagePrompt(input: string, contexts: A[], imageContext: string): string {
+
+        const contextString = contexts
+            .map((document) => `${this.contextIdKey}: ${document.id} -> ${this.contextKey}: ${this.makeDocumentContext(document)}`)
+            .join(' || ')
+
+        const updatedPrompt = `
+        You are confident PrewaveBot who helps users to navigate and understand Prewave's web interface.
+        Use the following pieces of context to answer the user's question based on the text of the question and a description of an attached web interface image.
+        If you don't know the answer, just say that you don't know, don't try to make up an answer. Be confident in your answers, and don't use words like like and I think.
+        Your goal is to make users feel supported and understood, ensuring they can navigate the platform's features with confidence. Highlight key functionalities, 
+        offer tips for optimal usage, and guide them toward discovering valuable insights on their own. 
+        Aim for responses that are clear, concise, and personalized, using no more than four sentences.
+        
+        I provide the context in the format "${this.contextIdKey} -> ${this.contextKey} || ${this.contextIdKey} -> ${this.contextKey}".
+        Your response should contain your answer, together with an array of the IDs for the contexts you used to answer the question. Your question should be in the following
+        JSON format: { "answer": "your answer to question", "contextIds": ["id1", "id2"] }.
+            
+        Context:
+        """
+        ${contextString}
+        """
+        
+        Question: ${input}
+        UI Screenshot Description: """ + ${imageContext} + """
+        Answer:"""
+        `
+        // return (
+        //     `Help to answer a question that includes an image as attachement. I will give you the question, detailed description of the image, and extra context
+        //      related to the question and image which you must use to answer the question. The information you use to answer
+        //     the question can only be drawn from the provided context pieces, and not from your own trained memory. I provide the context in the
+        //     format "${this.contextIdKey} -> ${this.contextKey} || ${this.contextIdKey} -> ${this.contextKey}".
+        //
+        //     Your response should contain your answer, together with an array of the IDs for the contexts you used to answer the question. It should be in the following
+        //     JSON format: { "answer": "your answer to question", "contextIds": ["id1", "id2"] }.
+        //     --------------------
+        //     Here is a description of the image that was provided as attachment to the question: ${imageContext}
+        //     --------------------
+        //     Here is the context to use to answer the question: ${contextString}
+        //     --------------------
+        //     Here is the question you should answer: ${input}`)
+
+        return updatedPrompt
+    }
+
+    // async runInferenceForAlertExplain(alertsText: string[]): Promise<RagResponse<A>> {
+    //
+    //
+    //     const prompt = this.makeAlertExplainPrompt(input, relevantDocsLimited)
+    //     const finalResponse = await this.llm.chatCompletionAsObject<ContextBasedResponse>(prompt)
+    //
+    //     const usedDocuments = relevantDocsLimited.filter((document) => {
+    //         const id = document.id
+    //         return finalResponse.contextIds.includes(id)
+    //     })
+    //
+    //     return {
+    //         input: input,
+    //         output: finalResponse.answer,
+    //         references: usedDocuments
+    //     } as RagResponse<A>
+    // }
+
+    // private makeAlertExplainPrompt(alertsText: string, question: string): string {
+    //
+    //     const contextString = contexts
+    //         .map((document) => `${this.contextIdKey}: ${document.id} -> ${this.contextKey}: ${this.makeDocumentContext(document)}`)
+    //         .join(' || ')
+    //
+    //     return (
+    //         `Help to answer the following question. I will give you extra context you must use to answer the question. The information you use to answer
+    //         the question can only be drawn from the provided context pieces, and not from your own trained memory. I provided context in the
+    //         format "${this.contextIdKey} -> ${this.contextKey} || ${this.contextIdKey} -> ${this.contextKey}".
+    //
+    //         Your response should contain your answer, together with an array of the IDs for the contexts you used to answer the question. It should be in the following
+    //         JSON format: { "answer": "your answer to question", "contextIds": ["id1", "id2"] }.
+    //         --------------------
+    //         Here is the context to use to answer the question: ${contextString}
+    //         --------------------
+    //         Here is the question you should answer: ${input}`)
+    // }
 
 
 }

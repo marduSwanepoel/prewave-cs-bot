@@ -7,6 +7,7 @@ import {PrewaveRagSource} from "@/domain/prewave/PrewaveRagSource";
 import {MongoRAGClient} from "@/backend/llms/rag/MongoRAGClient";
 import {MarkdownSplitter} from "@/backend/common/MarkdownSplitter";
 import {RagResponse} from "@/backend/llms/rag/RagResponse";
+import {MongoCollection} from "@/backend/databases/mongodb/MongoCollection";
 
 interface BasicRequest {
     question: string
@@ -26,6 +27,12 @@ export async function POST(req: Request) {
     return NextResponse.json(res)
 }
 
+interface AlertInfo {
+    id: string
+    url: string
+    content: string
+    dateCreated: string
+}
 
 class HackathonClient {
 
@@ -40,6 +47,8 @@ class HackathonClient {
         "embedding_vector",
         (document: PrewaveRagSource) => MarkdownSplitter.removeMarkdownCharacters(document.content)
     )
+
+    alertsCollection = new MongoCollection<AlertInfo>("alerts", this.mongoInstance)
 
     ragClient = MongoRAGClient.fromEnv<PrewaveRagSource>(
         this.publications,
@@ -60,7 +69,7 @@ class HackathonClient {
                 return this.answerKnowledgeBaseQuestion(request.question)
             case "IMAGE_ANALYSIS":
                 console.log("processing IMAGE_ANALYSIS")
-                return this.answerKnowledgeBaseQuestion(request.question)
+                return !!request.imageUrl ? this.explainImage(request.question, request.imageUrl) : this.answerKnowledgeBaseQuestion(request.question)
             case "EXPLAIN_ALERTS":
                 console.log("processing EXPLAIN_ALERTS")
                 return this.answerKnowledgeBaseQuestion(request.question)
@@ -73,6 +82,16 @@ class HackathonClient {
     answerKnowledgeBaseQuestion(question: string): Promise<RagResponse<PrewaveRagSource>> {
         return this.ragClient.runInference(question, "")
     }
+
+    explainImage(question: string, imageUrl: string): Promise<RagResponse<PrewaveRagSource>> {
+        return this.ragClient.runInferenceWithImage(question, "", imageUrl)
+    }
+
+    // explainAlert(question: string, imageUrl: string): Promise<RagResponse<PrewaveRagSource>> {
+    //     const alerts = this.alertsCollection.findAll()
+    //     const
+    //     return this.ragClient.runInference(question, "", imageUrl)
+    // }
 
     submitMissedAlert(question: string): Promise<RagResponse<PrewaveRagSource>> {
         const prompt = `Help me to create a JSON object that I can use to submit a missed alert. In order to do so, you have to extract three things from the question:
@@ -97,12 +116,12 @@ class HackathonClient {
     routeQuestion(question: string): Promise<string> {
         const prompt = `Given a question, help me to understand which task I should perform. I will give you the tasks, an overview of each task, and then the task key
         you should return if the question matches the task to do. Here are the tasks:
-        1. If the questions asks to create a missed alert given a url and information about the alert. Key = MISSED_ALERT
-        2. If an answer is received that asks to explain terminology or a concept, use information from a knowledgebase to answer the question. Key = Q_AND_A
-        3. If an image is attached and the user want to better understand it, or find content relevant to it, do image analysis. Key = IMAGE_ANALYSIS
-        4. If the question wants to find information about recent alerts that it has received. Key = EXPLAIN_ALERTS.
+        1. If the questions asks to specifically create a missed alert given a url and information about the alert. Key = MISSED_ALERT
+        2. If the questions asks to explain terminology or a concept or get more details on some topic. Key = Q_AND_A
+        3. If the questions asks to help with a UI screenshot or attached, find content relevant to it, or do image analysis. Key = IMAGE_ANALYSIS
+        4. If the question wants to get more details and information or an explanation about recent alerts present in the system. Key = EXPLAIN_ALERTS.
         
-        For your answer, ONLY return the correct task key, nothing else. Example, question: help me to create this missed alert for Hilti at url www.abc.com -> answer: MISSED_ALERT
+        For your answer, ONLY return the correct task key, nothing else. Example, question = help me to create this missed alert for Hilti at url www.abc.com -> answer = MISSED_ALERT
         
         Here is the question you should analyse: ${question}`
 

@@ -101,15 +101,18 @@ export class MongoCollection<A> {
     //
     // }
 
-    // async findMany(query: Filter<A>): Promise<A[]> {
-    //     const collection = await this.collectionDTO()
-    //     const projection = { _id: 0 } as Projection<B>
-    //     return collection
-    //         .find(query, {projection: projection})
-    //         .toArray()
-    //         .then((results) => ResultCO.rightResult(results))
-    //         .catch((err) => ResultCO.leftResult(err))
-    // }
+    async findAll(): Promise<A[]> {
+        const collection = await this.collection()
+        // @ts-ignore
+        return collection
+            .find({})
+            .toArray()
+            .then((documents) => Promise.resolve(documents))
+            .catch((err) => {
+                this.log.error("Error on DB find: " + err)
+                return Promise.reject("Unable to find documents")
+            })
+    }
 
     // async findOne(query: Filter<A>): Promise<A | null> {
     //     const collection = await this.collection()
